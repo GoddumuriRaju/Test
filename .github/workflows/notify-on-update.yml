@@ -46,7 +46,12 @@ jobs:
           receiver = "${{ secrets.EMAIL_RECEIVER }}"
           password = "${{ secrets.EMAIL_PASSWORD }}"
           subject = "GitHub Repository Updated"
-          body = "The following new files were added or updated in the repository:\n\n$(cat new_files.txt)"
+
+          # Reading the list of new files
+          with open('new_files.txt', 'r') as f:
+              new_files = f.read()
+
+          body = f"The following new files were added or updated in the repository:\n\n{new_files}"
 
           msg = MIMEText(body)
           msg['Subject'] = subject
