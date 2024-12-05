@@ -3,33 +3,62 @@ name: Notify on Repository Update
 on:
   push:
     branches:
-      - main  # Monitor the main branch
+      - main
 
 jobs:
   notify:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Install dependencies
-      - name: Install sendmail
-        run: sudo apt-get install -y sendmail
+      - name: Check for new files
+        run: |
+          echo "Checking for new files..."
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            NEW_FILES=$(git diff --name-only HEAD^ HEAD)
+          else
+            NEW_FILES=$(git ls-tree --name-only -r HEAD)
+          fi
 
-      # Step 3: Detect new files and send an email
-      - name: Send email on new files
+          if [ -z "$NEW_FILES" ]; then
+            echo "No new files."
+            exit 0
+          else
+            echo "New files detected:"
+            echo "$NEW_FILES"
+            echo "$NEW_FILES" > new_files.txt
+          fi
+
+      - name: Send email notification
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_RECEIVER: "rajugoddumuri@gmail.com"
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         run: |
-          echo "Checking for new files..."
-          git diff --name-only HEAD^ HEAD | grep '^' || echo "No new files."
-          if git diff --name-only HEAD^ HEAD | grep -E '.+'; then
-            echo "New files detected. Sending email..."
-            echo -e "Subject: New Files Added\n\nThe following files were added:\n$(git diff --name-only HEAD^ HEAD)" | \
-            sendmail -v -f "$EMAIL_SENDER" -au"$EMAIL_SENDER" -ap"$EMAIL_PASSWORD" "$EMAIL_RECEIVER"
-          else
-            echo "No new files detected."
+          echo "Sending email..."
+          python3 - <<EOF
+          import smtplib
+          from email.mime.text import MIMEText
+
+          sender = "${{ secrets.EMAIL_SENDER }}"
+          receiver = "${{ secrets.EMAIL_RECEIVER }}"
+          password = "${{ secrets.EMAIL_PASSWORD }}"
+          subject = "GitHub Repository Updated"
+          body = "The following new files were added or updated in the repository:\n\n$(cat new_files.txt)"
+
+          msg = MIMEText(body)
+          msg['Subject'] = subject
+          msg['From'] = sender
+          msg['To'] = receiver
+
+          try:
+              with smtplib.SMTP("smtp.gmail.com", 587) as server:
+                  server.starttls()
+                  server.login(sender, password)
+                  server.sendmail(sender, receiver, msg.as_string())
+              print("Email sent successfully!")
+          except Exception as e:
+              print(f"Failed to send email: {e}")
+          EOF
