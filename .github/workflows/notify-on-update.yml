@@ -23,7 +23,7 @@ jobs:
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_RECEIVER: "receiver_email@example.com"
+          EMAIL_RECEIVER: "rajugoddumuri@gmail.com"
         run: |
           echo "Checking for new files..."
           git diff --name-only HEAD^ HEAD | grep '^' || echo "No new files."
