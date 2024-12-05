@@ -3,10 +3,10 @@ name: Notify on Repository Update
 on:
   push:
     branches:
-      - main  # Replace with the branch you want to monitor
+      - main  # Monitor the main branch
 
 jobs:
-  send_email:
+  notify:
     runs-on: ubuntu-latest
 
     steps:
@@ -14,12 +14,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Run a custom script to detect changes and send email
-      - name: Notify on new files
+      # Step 2: Install dependencies
+      - name: Install sendmail
+        run: sudo apt-get install -y sendmail
+
+      # Step 3: Detect new files and send an email
+      - name: Send email on new files
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_RECEIVER: "rajugoddumuri@gmail.com"  # Replace with your recipient email
+          EMAIL_RECEIVER: "receiver_email@example.com"
         run: |
           echo "Checking for new files..."
           git diff --name-only HEAD^ HEAD | grep '^' || echo "No new files."
@@ -28,5 +32,4 @@ jobs:
             echo -e "Subject: New Files Added\n\nThe following files were added:\n$(git diff --name-only HEAD^ HEAD)" | \
             sendmail -v -f "$EMAIL_SENDER" -au"$EMAIL_SENDER" -ap"$EMAIL_PASSWORD" "$EMAIL_RECEIVER"
           else
-            echo "No new files added."
-          fi
+            echo "No new files detected."
